@@ -7,67 +7,62 @@
 #include "mmu.h"
 #include "proc.h"
 
-int
-sys_fork(void)
+int sys_fork(void)
 {
   return fork();
 }
 
-int
-sys_exit(void)
+int sys_exit(void)
 {
   exit();
-  return 0;  // not reached
+  return 0; // not reached
 }
 
-int
-sys_wait(void)
+int sys_wait(void)
 {
   return wait();
 }
 
-int
-sys_kill(void)
+int sys_kill(void)
 {
   int pid;
 
-  if(argint(0, &pid) < 0)
+  if (argint(0, &pid) < 0)
     return -1;
   return kill(pid);
 }
 
-int
-sys_getpid(void)
+int sys_getpid(void)
 {
   return myproc()->pid;
 }
 
-int
-sys_sbrk(void)
+int sys_sbrk(void)
 {
   int addr;
   int n;
 
-  if(argint(0, &n) < 0)
+  if (argint(0, &n) < 0)
     return -1;
   addr = myproc()->sz;
-  if(growproc(n) < 0)
+  if (growproc(n) < 0)
     return -1;
   return addr;
 }
 
-int
-sys_sleep(void)
+int sys_sleep(void)
 {
   int n;
   uint ticks0;
 
-  if(argint(0, &n) < 0)
+  if (argint(0, &n) < 0)
     return -1;
   acquire(&tickslock);
   ticks0 = ticks;
-  while(ticks - ticks0 < n){
-    if(myproc()->killed){
+  while (ticks - ticks0 < n)
+  {
+    if (myproc()->killed)
+    {
       release(&tickslock);
       return -1;
     }
@@ -79,8 +74,7 @@ sys_sleep(void)
 
 // return how many clock tick interrupts have occurred
 // since start.
-int
-sys_uptime(void)
+int sys_uptime(void)
 {
   uint xticks;
 
@@ -88,4 +82,36 @@ sys_uptime(void)
   xticks = ticks;
   release(&tickslock);
   return xticks;
+}
+
+int sys_date(void)
+{
+  struct rtcdate *p;
+  if (argptr(0, (void *)&p, sizeof(*p)))
+    return -1;
+  // cprintf("%d:%p",sizeof(*p),p);
+  cmostime(p);
+  return 0;
+}
+
+int sys_pgtPrint(void)
+{
+  struct proc *curproc = myproc();
+  pde_t *pagedir = curproc->pgdir;
+  for (uint i = 0; i < NPDENTRIES; i++)
+  {
+    if (pagedir[i] && PTE_P)
+    {
+      pte_t *pagetable = (pte_t *)P2V(PTE_ADDR(pagedir[i]));
+      for (int j = 0; j < NPTENTRIES; j++)
+      {
+        if (pagetable[j] & PTE_P && (pagetable[j] & PTE_U))
+        {
+          uint pte = PGADDR(i, j, 0);
+          cprintf("Page Entry %d: Virtual Address: 0x%p, Physical Address: 0x%p, Write Bit: %d\n", j, pte, PTE_ADDR(pagetable[j]), (PTE_FLAGS(pagetable[j] & PTE_W) / 2));
+        }
+      }
+    }
+  }
+  return 0;
 }
