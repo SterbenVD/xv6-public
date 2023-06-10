@@ -89,3 +89,29 @@ sys_uptime(void)
   release(&tickslock);
   return xticks;
 }
+
+int sys_date(void){
+  struct rtcdate* p;
+  if(argptr(0, (void*)&p, sizeof(*p)))
+    return -1;
+  // cprintf("%d:%p",sizeof(*p),p);
+  cmostime(p);
+  return 0;
+}
+
+int sys_pgtPrint(void)
+{
+  struct proc *curproc = myproc();
+  pde_t *pagedir = curproc->pgdir;
+  for(uint i=0;i<NPDENTRIES;i++){
+    if(pagedir[i] && PTE_P){
+      pte_t *pagetable = (pte_t*)P2V(PTE_ADDR(pagedir[i]));
+      for (int j = 0; j < NPTENTRIES; j++) {
+        if (pagetable[j] & PTE_P && (pagetable[j] & PTE_U)) {
+          cprintf("Page Entry %d: Virtual Address: 0x%p, Physical Address: 0x%p\n", j, PGADDR(i,j,0),pagetable[j]);
+        }
+      }
+    }
+  }
+  return 0;
+}
